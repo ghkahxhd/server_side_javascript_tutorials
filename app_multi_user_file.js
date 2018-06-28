@@ -2,6 +2,8 @@ var express = require('express');
 var session = require('express-session');
 var FileStore = require('session-file-store')(session);
 var bodyParser = require('body-parser');
+var bkfd2Password = require('pbkdf2-password');
+var hasher = bkfd2Password();
 var app = express();
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -42,24 +44,35 @@ app.get('/welcome', function(req, res) {
   }
 });
 
+var salt = 'asdf123sdaasdf';
 var users = [
   {
     username: 'ghkahxhd',
-    password: '111',
+    password: '7tH4WYL5tApbCZLzj2xKgV8N9IgMniomu546A68gs27JoBIbUX1lBJZmUIf08WjHa0zGu8iXHoTS7Hy6d7xOSfbllCf+nyF/dH0gkaFv7HWZCEld+iPNWtt+c64tKP508DCTQqWtS2YMsnjTGcnzRLdzzoIiGfhcnaBXtUqwrFE=',
+    salt: 'ArqzFcX2q8VAICfPxD5dhQW+HklTYXmr8+I4x7676uWSJkvk7x+ZeWv61D1F65+CG5Aph4t9geJeo1WxLu4/Dg==',
     displayName: 'Ghkahxhd'
+  },
+  {
+    username: 'ahrwkrn',
+    password: 'ii7YNUE8RJ8pBWNTHsQdB1MO2U86YF+dT6MuWW8bj/0/OZsfkwnFdp3BM6X/xwQFHDNqYA5rZSNhbPA2VzhuAb/YHWuT9IlLt01I1V6I3p5JXBhbi1a/RQxbUNDJUHpnzGxcunqhpImGXxphlVdMT7M9j6HTxaojF8c1Pq6O0XE=',
+    salt: 'iusIrASqtPHSYOioFNr0vYAeFGb7OpsjVv2SIEir6BZAhp8bS90p3PB4JYzMHaebgT2Q7jAJJVX/Gn0IXnMqZQ==',
+    displayName: 'Ahrwkrn'
   }
 ];
 
 app.post('/auth/register', function(req, res) {
-  var user = {
-    username: req.body.username,
-    password: req.body.password,
-    displayName: req.body.displayName
-  };
-  users.push(user);
-  req.session.displayName = req.body.displayName;
-  req.session.save(function() {
-    res.redirect('/welcome');
+  hasher({password:req.body.password}, function(err, pass, salt, hash) {
+    var user = {
+      username: req.body.username,
+      password: hash,
+      salt: salt,
+      displayName: req.body.displayName
+    };
+    users.push(user);
+    req.session.displayName = req.body.displayName;
+    req.session.save(function() {
+      res.redirect('/welcome');
+    });
   });
 });
 app.get('/auth/register', function(req, res) {
@@ -89,14 +102,19 @@ app.post('/auth/login', function(req, res) {
   var pwd = req.body.password;
   for(var i=0; i<users.length; i++) {
     var user = users[i];
-    if(uname === user.username && pwd === user.password) {
-      req.session.displayName = user.displayName;
-      return req.session.save(function() {
-        res.redirect('/welcome');
+    if(uname === user.username) {
+      return hasher({password:pwd, salt:user.salt}, function(err, pass, salt, hash) {
+        if(hash === user.password) {
+          req.session.displayName = user.displayName;
+          req.session.save(function() {
+            res.redirect('/welcome');
+          });
+        } else {
+            res.send('Who are you? <a href="/auth/login">login</a>');
+        }
       });
     }
   }
-  res.send('Who are you? <a href="/auth/login">login</a>');
 });
 app.get('/auth/login', function(req, res) {
   var output = `
