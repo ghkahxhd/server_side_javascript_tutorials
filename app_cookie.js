@@ -14,7 +14,7 @@ app.get('/products', function(req, res) {
       <li>
         <a href="/cart/${id}">${products[id].title}</a>
       </li>`
-  }1
+  }
   res.send(`<h1>Products</h1><ul>${output}</ul><a href="/cart">Cart</a>`);
 });
 
